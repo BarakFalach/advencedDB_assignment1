@@ -1,0 +1,63 @@
+CREATE TABLE MediaItems (
+    MID NUMBER(10,0),
+    TITLE VARCHAR(200),
+    PROD_YEAR NUMBER(4),
+    TITLE_LENGTH NUMBER(6),
+    PRIMARY KEY (MID)
+);
+---
+CREATE TABLE Similarity (
+    MID1 NUMBER(10,0) NOT NULL,
+    MID2 NUMBER(10,0) NOT NULL,
+    SIMILARITY FLOAT,
+    CONSTRAINT FK1_SIMILARITY
+        FOREIGN KEY (MID1)
+        REFERENCES MediaItems (MID),
+    CONSTRAINT FK2_SIMILARTIY
+        FOREIGN KEY (MID2)
+        REFERENCES MediaItems (MID),
+    CONSTRAINT PK_SIMILARITY PRIMARY KEY (MID1,MID2)
+);
+---
+CREATE OR REPLACE TRIGGER AutoIncrement
+BEFORE INSERT ON MEDIAITEMS FOR EACH ROW
+DECLARE
+    running_mid_index NUMBER(10,0);
+BEGIN
+    SELECT MAX(MID) INTO running_mid_index FROM MEDIAITEMS;
+    IF running_mid_index IS NOT NULL THEN
+        running_mid_index := running_mid_index + 1;
+    ELSE
+        running_mid_index := 0;
+    END IF;
+    
+    :new.MID := running_mid_index;
+    :new.TITLE_LENGTH := LENGTH(:new.TITLE);
+END;
+---
+CREATE OR REPLACE FUNCTION MaximalDistance RETURN NUMBER IS 
+    max_year NUMBER(4,0);
+    min_year NUMBER(4,0);
+BEGIN
+    SELECT MAX(PROD_YEAR) INTO max_year FROM MediaItems;
+    SELECT MIN(PROD_YEAR) INTO min_year FROM MediaItems;
+    IF max_year IS NULL OR min_year IS NULL THEN 
+        RETURN 0;
+    END IF;
+    RETURN POWER(max_year-min_year,2);
+END MaximalDistance;
+---
+CREATE OR REPLACE FUNCTION SimCalculation(midA NUMBER, midB NUMBER, maximal_distance NUMBER) RETURN FLOAT IS 
+    two_items_distance NUMBER(4,0);
+    midA_year NUMBER(4,0);
+    midB_year NUMBER(4,0);
+BEGIN
+    SELECT PROD_YEAR INTO midA_year FROM MediaItems WHERE MID = midA;
+    SELECT PROD_YEAR INTO midB_year FROM MediaItems WHERE MID = midB;
+    IF midA_year IS NULL OR midB_year IS NULL THEN 
+        RETURN -1;
+    END IF;
+    two_items_distance := POWER(midA_year-midB_year,2);
+    RETURN 1 - (two_items_distance/maximal_distance);
+END SimCalculation;
+---
