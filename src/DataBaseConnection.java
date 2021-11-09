@@ -20,19 +20,17 @@ public class DataBaseConnection {
         if (dbConnection == null) return;
         String line;
         String splitBy = ",";
-        String insertStatementPrefix = "INSERT INTO MediaItems (TITLE, PROD_YEAR) VALUES (";
-        String insertStatement = "";
-        PreparedStatement preparedStatement = null;
+        String insertStatement = "INSERT INTO MediaItems (TITLE, PROD_YEAR) VALUES (?, ?)";
+        PreparedStatement preparedStatement;
         try {
             BufferedReader br = new BufferedReader(new FileReader(path));
+            preparedStatement = dbConnection.prepareStatement(insertStatement);
             while ((line = br.readLine()) != null) {
                 String[] movie = line.split(splitBy);
-                System.out.println("Movie [Name=" + movie[0] + ", Year=" + movie[1]+ ']');
-                insertStatement = insertStatementPrefix + "'" + movie[0] + "', '" + movie[1] + "');";
-                preparedStatement = dbConnection.prepareStatement(insertStatement);
+                preparedStatement.setString(1, movie[0]);
+                preparedStatement.setString(2, movie[1]);
                 preparedStatement.executeQuery();
             }
-            assert preparedStatement != null;
             br.close();
             preparedStatement.close();
         }
@@ -42,6 +40,10 @@ public class DataBaseConnection {
     }
 
     public void calculateSimilarity() {
+        Connection dbConnection = createConnection();
+        if (dbConnection == null) return;
+        int maximalDistance = maximalDistance(dbConnection);
+
 
     }
 
@@ -60,7 +62,20 @@ public class DataBaseConnection {
             throwables.printStackTrace();
         }
         return null;
+    }
 
+    private int maximalDistance(Connection dbConnection) {
+        if (dbConnection == null) return 0;
+        try {
+            CallableStatement callableStatement = dbConnection.prepareCall("{call MaximalDistance()}");
+            callableStatement.execute();
+            callableStatement.registerOutParameter(1, Types.INTEGER);
+            return callableStatement.getInt(1);
+
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        return 0;
     }
 
 
